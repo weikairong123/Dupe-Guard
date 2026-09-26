@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "com.dupeguard.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"RegistryMixin",
+		"HolderReferenceAccessor",
+		"PayloadTypeRegistryMixin",
+		"ResourceLoaderImplMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
