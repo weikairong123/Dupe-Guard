@@ -65,7 +65,7 @@ public abstract class PayloadTypeRegistryMixin {
 		}
 		Object existing = ((PayloadTypeRegistryImpl<?>) (Object) this).get(type);
 		if (existing != null) {
-			DupeGuard.warnDuplicate("网络数据包", type.id().toString(), DupeGuard.findCaller());
+			DupeGuard.warnDuplicate("network packets", type.id().toString(), DupeGuard.findCaller());
 			cir.setReturnValue(existing);
 		}
 	}
