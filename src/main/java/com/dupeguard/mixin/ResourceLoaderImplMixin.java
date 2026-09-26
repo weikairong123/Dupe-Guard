@@ -34,7 +34,7 @@ public abstract class ResourceLoaderImplMixin {
 			return;
 		}
 		if (!DupeGuard.tryMarkListener(this, id)) {
-			DupeGuard.warnDuplicate("资源监听器", id.toString(), DupeGuard.findCaller());
+			DupeGuard.warnDuplicate("ResourceListener", id.toString(), DupeGuard.findCaller());
 			ci.cancel();
 		}
 	}
