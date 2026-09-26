@@ -54,7 +54,7 @@ public abstract class RegistryMixin<T> {
 		if (self.containsKey(key)) {
 			Optional<Holder.Reference<T>> existing = self.get(key);
 			if (existing.isPresent()) {
-				DupeGuard.warnDuplicate("注册表条目（方块/物品/实体等）", key.identifier().toString(), DupeGuard.findCaller());
+				DupeGuard.warnDuplicate("Registry entry (block/item/entity, etc.)", key.identifier().toString(), DupeGuard.findCaller());
 				bindBlockedIntrusiveHolder(key, value);
 				cir.setReturnValue(existing.get());
 			}
@@ -79,7 +79,7 @@ public abstract class RegistryMixin<T> {
 				((HolderReferenceAccessor<T>) (Object) holder).dupeguard$bindKey(key);
 			}
 		} catch (Throwable t) {
-			DupeGuard.LOGGER.warn("[DupeGuard] 绑定被拦截对象的 intrusive holder 失败（重复注册已被阻止，不影响正常启动）：{}", t.toString());
+			DupeGuard.LOGGER.warn("[DupeGuard] Binding the intrusive holder to the intercepted object failed (duplicate registration has been blocked, which does not affect normal startup)：\n{}", t.toString());
 		}
 	}
 
