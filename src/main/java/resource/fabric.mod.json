@@ -1,0 +1,25 @@
+{
+	"schemaVersion": 1,
+	"id": "dupeguard",
+	"version": "1.0.0",
+	"name": "Dupe Guard",
+	"description": "Duplicate Registration Protection: Prevents duplicate registration of block/item/entity IDs, network packets, and resource listeners to avoid game crashes.",
+	"authors": [
+		"Dupe Guard"
+	],
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.dupeguard.DupeGuard"
+		]
+	},
+	"mixins": [
+		"dupeguard.mixins.json"
+	],
+	"depends": {
+		"minecraft": ">=26.1",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
