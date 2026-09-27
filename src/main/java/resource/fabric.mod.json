@@ -8,6 +8,7 @@
 		"Dupe Guard"
 	],
 	"license": "MIT",
+	"icon": "assets/dupeguard/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
