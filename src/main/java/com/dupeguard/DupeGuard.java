@@ -47,7 +47,7 @@ public class DupeGuard implements ModInitializer {
 	 * @param caller   调用来源（尽力推断的模组 id / 类名）
 	 */
 	public static void warnDuplicate(String category, String id, String caller) {
-		LOGGER.warn("[DupeGuard] Duplicate registration detected and blocked：{} = \'{}\'，Calling Source：{}, category, id, caller);
+		LOGGER.warn("[DupeGuard] Duplicate registration detected and blocked：{} = \'{}\'"，Calling Source：{}, category, id, caller);
 		if (DupeGuardConfig.showStackTrace) {
 			LOGGER.warn("[DupeGuard] Duplicate registration call stack：", new Exception("duplicate registration stack trace"));
 		}
