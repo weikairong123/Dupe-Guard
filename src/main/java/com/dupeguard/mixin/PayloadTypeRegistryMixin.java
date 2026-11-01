@@ -2,97 +2,71 @@ package com.dupeguard.mixin;
 
 import com.dupeguard.DupeGuard;
 import com.dupeguard.DupeGuardConfig;
+import net.fabricmc.fabric.impl.networking.PayloadTypeRegistryImpl;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntSupplier;
 
+/**
+ * 拦截 Fabric 的网络数据包注册（PayloadTypeRegistry）。
+ *
+ * <p>当同一个数据包 ID 被重复注册（例如两个模组注册了相同的
+ * {@code CustomPacketPayload.Type}），阻止第二次注册并返回已存在的注册结果，
+ * 避免协议冲突与崩溃。</p>
+ *
+ * <p>该类属于 Fabric API 内部实现，跨版本可能改名，因此标记为 {@link Pseudo}
+ * 并设置 {@code require = 0}：若未来版本该类/方法不存在，本防护自动跳过，
+ * 不会导致游戏启动失败。</p>
+ */
 @Pseudo
 @Mixin(targets = "net.fabricmc.fabric.impl.networking.PayloadTypeRegistryImpl")
 public abstract class PayloadTypeRegistryMixin {
 
-    /**
-     * @Unique：每个 PayloadTypeRegistryImpl 实例拥有独立集合
-     * C2S注册表实例、S2C注册表实例是两个不同对象，各自一套Set，互相隔离
-     * 只拦截【同一个实例内部】对同一个Type的重复register调用
-     * 不同实例传入相同Type（双向注册）直接放行，属于Fabric合法行为
-     */
-    @Unique
-    private final Set<CustomPacketPayload.Type<?>> dupeguard$instanceRegisteredTypes = ConcurrentHashMap.newKeySet();
+	@Inject(
+			method = "register(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$Type;Lnet/minecraft/network/codec/StreamCodec;)Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$TypeAndCodec;",
+			at = @At("HEAD"),
+			cancellable = true,
+			require = 0)
+	private <T extends CustomPacketPayload> void dupeguard$blockDuplicatePayload(
+			CustomPacketPayload.Type<T> type, StreamCodec<?, ?> codec, CallbackInfoReturnable cir) {
+		checkAndBlock(type, cir);
+	}
 
-    @Inject(
-            method = "register(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$Type;Lnet/minecraft/network/codec/StreamCodec;)Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$TypeAndCodec;",
-            at = @At("HEAD"),
-            cancellable = true,
-            require = 0
-    )
-    private <T extends CustomPacketPayload> void dupeguard$onRegister(
-            CustomPacketPayload.Type<T> type,
-            StreamCodec<?, ?> codec,
-            CallbackInfoReturnable<?> cir
-    ) {
-        this.checkDuplicate(type, cir);
-    }
+	@Inject(
+			method = "registerLarge(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$Type;Lnet/minecraft/network/codec/StreamCodec;I)Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$TypeAndCodec;",
+			at = @At("HEAD"),
+			cancellable = true,
+			require = 0)
+	private <T extends CustomPacketPayload> void dupeguard$blockDuplicatePayloadLarge(
+			CustomPacketPayload.Type<T> type, StreamCodec<?, ?> codec, int size, CallbackInfoReturnable cir) {
+		checkAndBlock(type, cir);
+	}
 
-    @Inject(
-            method = "registerLarge(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$Type;Lnet/minecraft/network/codec/StreamCodec;I)Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$TypeAndCodec;",
-            at = @At("HEAD"),
-            cancellable = true,
-            require = 0
-    )
-    private <T extends CustomPacketPayload> void dupeguard$onRegisterLargeInt(
-            CustomPacketPayload.Type<T> type,
-            StreamCodec<?, ?> codec,
-            int maxSize,
-            CallbackInfoReturnable<?> cir
-    ) {
-        this.checkDuplicate(type, cir);
-    }
+	@Inject(
+			method = "registerLarge(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$Type;Lnet/minecraft/network/codec/StreamCodec;Ljava/util/function/IntSupplier;)Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$TypeAndCodec;",
+			at = @At("HEAD"),
+			cancellable = true,
+			require = 0)
+	private <T extends CustomPacketPayload> void dupeguard$blockDuplicatePayloadLarge2(
+			CustomPacketPayload.Type<T> type, StreamCodec<?, ?> codec, IntSupplier size, CallbackInfoReturnable cir) {
+		checkAndBlock(type, cir);
+	}
 
-    @Inject(
-            method = "registerLarge(Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$Type;Lnet/minecraft/network/codec/StreamCodec;Ljava/util/function/IntSupplier;)Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload$TypeAndCodec;",
-            at = @At("HEAD"),
-            cancellable = true,
-            require = 0
-    )
-    private <T extends CustomPacketPayload> void dupeguard$onRegisterLargeSupplier(
-            CustomPacketPayload.Type<T> type,
-            StreamCodec<?, ?> codec,
-            IntSupplier maxSizeSupplier,
-            CallbackInfoReturnable<?> cir
-    ) {
-        this.checkDuplicate(type, cir);
-    }
-
-    @Unique
-    private <T extends CustomPacketPayload> void checkDuplicate(
-            CustomPacketPayload.Type<T> type,
-            CallbackInfoReturnable<?> cir
-    ) {
-        if (!DupeGuardConfig.guardNetwork()) {
-            return;
-        }
-
-        // 当前实例中已经注册过该Type → 真正重复注册，拦截
-        if (dupeguard$instanceRegisteredTypes.contains(type)) {
-            DupeGuard.warnDuplicate(
-                    "network packets",
-                    type.id().toString(),
-                    DupeGuard.findCaller()
-            );
-            cir.cancel();
-            return;
-        }
-
-        // 当前实例首次注册，记录到本实例的集合
-        dupeguard$instanceRegisteredTypes.add(type);
-    }
+	@SuppressWarnings("unchecked")
+	private <T extends CustomPacketPayload> void checkAndBlock(CustomPacketPayload.Type<T> type, CallbackInfoReturnable cir) {
+		if (!DupeGuardConfig.guardNetwork()) {
+			return;
+		}
+		Object existing = ((PayloadTypeRegistryImpl<?>) (Object) this).get(type);
+		if (existing != null) {
+			DupeGuard.warnDuplicate("network packets", type.id().toString(), DupeGuard.findCaller());
+			cir.setReturnValue(existing);
+		}
+	}
 }
