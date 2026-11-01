@@ -18,7 +18,11 @@ import java.util.function.IntSupplier;
 @Pseudo
 @Mixin(targets = "net.fabricmc.fabric.impl.networking.PayloadTypeRegistryImpl")
 public abstract class PayloadTypeRegistryMixin {
-    // @Unique：为本Mixin目标类的每一个实例附加独立集合，模拟原实例内部注册表
+    /**
+     * 存储【当前这个注册表实例】已经注册过的Type
+     * 重点：允许不同PayloadTypeRegistryImpl实例存放完全相同的Type（clientbound/serverbound双向注册）
+     * 仅在**同一个实例内部重复register同一个type才判定为重复注册**
+     */
     @Unique
     private final Set<CustomPacketPayload.Type<?>> dupeguard$registeredTypes = ConcurrentHashMap.newKeySet();
 
@@ -58,6 +62,8 @@ public abstract class PayloadTypeRegistryMixin {
             return;
         }
 
+        // ✅关键：只拦截【当前这一个注册表实例】内部重复注册同一个Type
+        // 不同实例（serverbound / clientbound）传入同一个type是正常双向注册，直接放行
         if (dupeguard$registeredTypes.contains(type)) {
             DupeGuard.warnDuplicate("network packets", type.id().toString(), DupeGuard.findCaller());
             cir.cancel();
